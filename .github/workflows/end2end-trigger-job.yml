@@ -118,14 +118,20 @@ jobs:
         # Create deployment YAML file
         DEPLOYMENT_NAME="blue"
         
-        cat > deployment.yml << EOF
-        $schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
-        name: $DEPLOYMENT_NAME
-        endpoint_name: ${{ steps.create_endpoint.outputs.endpoint_name }}
-        model: azureml:${{ steps.register_model.outputs.model_name }}@${{ steps.register_model.outputs.model_version }}
-        instance_type: Standard_DS3_v2
-        instance_count: 1
-        EOF
+        # Clean start with empty file
+        > deployment.yml
+        
+        # Add content line by line with proper formatting
+        echo '$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json' >> deployment.yml
+        echo "name: $DEPLOYMENT_NAME" >> deployment.yml
+        echo "endpoint_name: ${{ steps.create_endpoint.outputs.endpoint_name }}" >> deployment.yml
+        echo "model: azureml:${{ steps.register_model.outputs.model_name }}@${{ steps.register_model.outputs.model_version }}" >> deployment.yml
+        echo "instance_type: Standard_DS3_v2" >> deployment.yml
+        echo "instance_count: 1" >> deployment.yml
+        
+        # Debug: Display the contents of the YAML file
+        echo "Contents of deployment.yml:"
+        cat deployment.yml
         
         # Check if deployment exists
         DEPLOYMENT_EXISTS=$(az ml online-deployment list --endpoint-name ${{ steps.create_endpoint.outputs.endpoint_name }} --workspace-name aml-tccc-ms-training-dts-dsml-poc --resource-group rg-tccc-ms-training-for-dts-dsml-poc --query "[?name=='$DEPLOYMENT_NAME'].name" -o tsv)
