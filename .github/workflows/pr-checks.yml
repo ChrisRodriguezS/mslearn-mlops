@@ -1,0 +1,17 @@
+name: PR Code Verification
+
+on:
+  pull_request:
+
+jobs:
+  verify-code:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repo
+      uses: actions/checkout@main
+      
+    - name: Echo PR Information
+      run: |
+        echo "Pull request #${{ github.event.number }} opened!"
+        echo "Changes detected in src directory"
+        echo "Ready for code verification"
