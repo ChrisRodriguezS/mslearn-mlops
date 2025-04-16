@@ -1,4 +1,4 @@
-name: Manually trigger an Azure Machine Learning job
+name: Trigger end to end AzureML training job
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
           --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
           --set compute=Compute-Cluster \
           --set inputs.folder_name=diabetes-dev-folder \
-          --set inputs.folder_version=1
+          --set inputs.folder_version=1 \
           --stream
 
   train-prod:
