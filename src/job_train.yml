@@ -7,18 +7,9 @@ command: >-
 inputs:
   training_data: 
     type: uri_folder 
-    path: azureml:${{inputs.folder_name}}@${{inputs.folder_version}}
-  folder_name:
-    type: string
-    default: diabetes-dev-folder
-  folder_version:
-    type: string
-    default: latest
+    path: azureml:diabetes-dev-folder@latest
   reg_rate: 0.01
-  experiment_env:
-    type: string
-    default: dev
 environment: azureml:AzureML-sklearn-0.24-ubuntu18.04-py37-cpu@latest
 compute: christianrodriguez1
-experiment_name: training-diabetes-${{inputs.experiment_env}}
+experiment_name: training-diabetes-dev
 description: Training base model on diabetes dataset
