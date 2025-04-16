@@ -39,7 +39,105 @@ jobs:
         creds: ${{secrets.AZURE_CREDENTIALS}}
     - name: Run Prod Experiment Job
       run: |
-        az ml job create --file src/job_prod.yml \
+        JOB_OUTPUT=$(az ml job create --file src/job_prod.yml \
           --workspace-name aml-tccc-ms-training-dts-dsml-poc \
           --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
           --set compute=Compute-Cluster \
+          --query name -o tsv)
+        echo "::set-output name=job_id::$JOB_OUTPUT"
+
+  deploy-model:
+    runs-on: ubuntu-latest
+    environment: prod
+    needs: train-prod
+    steps:
+    - name: Check out repo
+      uses: actions/checkout@main
+    
+    - name: Install az ml extension
+      run: az extension add -n ml -y
+    
+    - name: Azure login
+      uses: azure/login@v1
+      with:
+        creds: ${{secrets.AZURE_CREDENTIALS}}
+    
+    - name: Get latest run info
+      id: get_run
+      run: |
+        # Get the latest completed run from the production experiment
+        RUN_ID=$(az ml job list --workspace-name aml-tccc-ms-training-dts-dsml-poc --resource-group rg-tccc-ms-training-for-dts-dsml-poc --experiment-name training_diabetes_prod --query "[0].name" -o tsv)
+        echo "::set-output name=run_id::$RUN_ID"
+    
+    - name: Register Model
+      id: register_model
+      run: |
+        MODEL_NAME="diabetes-model-prod-christian"
+        MODEL_VERSION=$(az ml model create --name $MODEL_NAME \
+          --version auto \
+          --path "azureml://jobs/${{ steps.get_run.outputs.run_id }}/outputs/artifacts/model" \
+          --type mlflow_model \
+          --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
+          --workspace-name aml-tccc-ms-training-dts-dsml-poc \
+          --query version -o tsv)
+        echo "::set-output name=model_name::$MODEL_NAME"
+        echo "::set-output name=model_version::$MODEL_VERSION"
+    
+    - name: Create Online Endpoint
+      id: create_endpoint
+      run: |
+        ENDPOINT_NAME="diabetes-endpoint"
+        
+        # Check if endpoint exists
+        ENDPOINT_EXISTS=$(az ml online-endpoint list --workspace-name aml-tccc-ms-training-dts-dsml-poc --resource-group rg-tccc-ms-training-for-dts-dsml-poc --query "[?name=='$ENDPOINT_NAME'].name" -o tsv)
+        
+        if [ -z "$ENDPOINT_EXISTS" ]; then
+          # Create endpoint YAML file
+          cat > endpoint.yml << EOF
+          $schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
+          name: $ENDPOINT_NAME
+          auth_mode: key
+          EOF
+          
+          # Create the endpoint
+          az ml online-endpoint create --file endpoint.yml \
+            --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
+            --workspace-name aml-tccc-ms-training-dts-dsml-poc
+        fi
+        
+        echo "::set-output name=endpoint_name::$ENDPOINT_NAME"
+    
+    - name: Deploy Model to Endpoint
+      run: |
+        # Create deployment YAML file
+        DEPLOYMENT_NAME="blue"
+        
+        cat > deployment.yml << EOF
+        $schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+        name: $DEPLOYMENT_NAME
+        endpoint_name: ${{ steps.create_endpoint.outputs.endpoint_name }}
+        model: azureml:${{ steps.register_model.outputs.model_name }}@${{ steps.register_model.outputs.model_version }}
+        instance_type: Standard_DS3_v2
+        instance_count: 1
+        EOF
+        
+        # Check if deployment exists
+        DEPLOYMENT_EXISTS=$(az ml online-deployment list --endpoint-name ${{ steps.create_endpoint.outputs.endpoint_name }} --workspace-name aml-tccc-ms-training-dts-dsml-poc --resource-group rg-tccc-ms-training-for-dts-dsml-poc --query "[?name=='$DEPLOYMENT_NAME'].name" -o tsv)
+        
+        if [ -z "$DEPLOYMENT_EXISTS" ]; then
+          # Create the deployment
+          az ml online-deployment create --file deployment.yml \
+            --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
+            --workspace-name aml-tccc-ms-training-dts-dsml-poc
+        else
+          # Update the deployment
+          az ml online-deployment update --file deployment.yml \
+            --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
+            --workspace-name aml-tccc-ms-training-dts-dsml-poc
+        fi
+        
+        # Update traffic to point to the new deployment
+        az ml online-endpoint update --name ${{ steps.create_endpoint.outputs.endpoint_name }} \
+          --traffic "$DEPLOYMENT_NAME=100" \
+          --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
+          --workspace-name aml-tccc-ms-training-dts-dsml-poc
