@@ -26,7 +26,7 @@ jobs:
 
   train-prod:
     runs-on: ubuntu-latest
-    environment: production  # This is your production environment with approvals
+    environment: prod  # This is your production environment with approvals
     needs: train-dev  # This ensures prod runs only after dev succeeds
     steps:
     - name: Check out repo
