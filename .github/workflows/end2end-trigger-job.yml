@@ -74,7 +74,6 @@ jobs:
       run: |
         MODEL_NAME="diabetes-model-prod-christian"
         MODEL_VERSION=$(az ml model create --name $MODEL_NAME \
-          --version auto \
           --path "azureml://jobs/${{ steps.get_run.outputs.run_id }}/outputs/artifacts/model" \
           --type mlflow_model \
           --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
