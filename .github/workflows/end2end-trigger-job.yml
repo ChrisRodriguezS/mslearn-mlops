@@ -92,7 +92,7 @@ jobs:
         
         if [ -z "$ENDPOINT_EXISTS" ]; then
           # Create endpoint YAML file
-          cat > endpoint.yml << EOF
+          cat > endpoint.yml << 'EOF'
           $schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
           name: $ENDPOINT_NAME
           auth_mode: key
