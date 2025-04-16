@@ -81,16 +81,23 @@ jobs:
           --query version -o tsv)
         echo "::set-output name=model_name::$MODEL_NAME"
         echo "::set-output name=model_version::$MODEL_VERSION"
-    
+        
     - name: Create Online Endpoint
       id: create_endpoint
       run: |
-        ENDPOINT_NAME="diabetes-endpoint"
+        # Add uniqueness with timestamp
+        TIMESTAMP=$(date +%Y%m%d%H%M)
+        ENDPOINT_NAME="diabetes-endpoint-${TIMESTAMP}"
+        
+        # Debug output
+        echo "Checking for endpoint: $ENDPOINT_NAME"
         
         # Check if endpoint exists
         ENDPOINT_EXISTS=$(az ml online-endpoint list --workspace-name aml-tccc-ms-training-dts-dsml-poc --resource-group rg-tccc-ms-training-for-dts-dsml-poc --query "[?name=='$ENDPOINT_NAME'].name" -o tsv)
+        echo "Endpoint exists check result: '$ENDPOINT_EXISTS'"
         
         if [ -z "$ENDPOINT_EXISTS" ]; then
+          echo "Creating new endpoint: $ENDPOINT_NAME"
           # Create endpoint YAML content without heredoc
           echo '$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json' > endpoint.yml
           echo "name: $ENDPOINT_NAME" >> endpoint.yml
@@ -100,6 +107,8 @@ jobs:
           az ml online-endpoint create --file endpoint.yml \
             --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
             --workspace-name aml-tccc-ms-training-dts-dsml-poc
+        else
+          echo "Endpoint $ENDPOINT_NAME already exists, skipping creation"
         fi
         
         echo "endpoint_name=$ENDPOINT_NAME" >> $GITHUB_OUTPUT
