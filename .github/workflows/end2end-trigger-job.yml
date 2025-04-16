@@ -91,12 +91,10 @@ jobs:
         ENDPOINT_EXISTS=$(az ml online-endpoint list --workspace-name aml-tccc-ms-training-dts-dsml-poc --resource-group rg-tccc-ms-training-for-dts-dsml-poc --query "[?name=='$ENDPOINT_NAME'].name" -o tsv)
         
         if [ -z "$ENDPOINT_EXISTS" ]; then
-          # Create endpoint YAML file
-          cat > endpoint.yml << 'EOF'
-          $schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
-          name: $ENDPOINT_NAME
-          auth_mode: key
-          EOF
+          # Create endpoint YAML content without heredoc
+          echo '$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json' > endpoint.yml
+          echo "name: $ENDPOINT_NAME" >> endpoint.yml
+          echo 'auth_mode: key' >> endpoint.yml
           
           # Create the endpoint
           az ml online-endpoint create --file endpoint.yml \
@@ -104,8 +102,8 @@ jobs:
             --workspace-name aml-tccc-ms-training-dts-dsml-poc
         fi
         
-        echo "::set-output name=endpoint_name::$ENDPOINT_NAME"
-    
+        echo "endpoint_name=$ENDPOINT_NAME" >> $GITHUB_OUTPUT
+        
     - name: Deploy Model to Endpoint
       run: |
         # Create deployment YAML file
