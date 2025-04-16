@@ -49,7 +49,7 @@ jobs:
   deploy-model:
     runs-on: ubuntu-latest
     environment: prod
-    needs: train-prod
+    # needs: train-prod
     steps:
     - name: Check out repo
       uses: actions/checkout@main
