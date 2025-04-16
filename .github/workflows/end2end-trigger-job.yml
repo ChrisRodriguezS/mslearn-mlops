@@ -24,6 +24,7 @@ jobs:
           --set compute=Compute-Cluster \
           --set inputs.folder_name=diabetes-dev-folder \
           --set inputs.folder_version=1 \
+          --set inputs.experiment_env=dev \
           --stream
 
   train-prod:
@@ -46,4 +47,5 @@ jobs:
           --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
           --set compute=Compute-Cluster \
           --set inputs.folder_name=diabetes-prod-folder \
-          --set inputs
+          --set inputs.folder_version=1 \
+          --set inputs.experiment_env=prod
