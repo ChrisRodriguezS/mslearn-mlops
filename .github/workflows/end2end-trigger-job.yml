@@ -66,7 +66,7 @@ jobs:
       id: get_run
       run: |
         # Get the latest completed run from the production experiment
-        RUN_ID=$(az ml job list --workspace-name aml-tccc-ms-training-dts-dsml-poc --resource-group rg-tccc-ms-training-for-dts-dsml-poc --experiment-name training_diabetes_prod --query "[0].name" -o tsv)
+        RUN_ID=$(az ml job list --workspace-name aml-tccc-ms-training-dts-dsml-poc --resource-group rg-tccc-ms-training-for-dts-dsml-poc --experiment-name training-diabetes-prod --query "[0].name" -o tsv)
         echo "::set-output name=run_id::$RUN_ID"
     
     - name: Register Model
