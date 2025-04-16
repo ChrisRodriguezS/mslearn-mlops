@@ -79,9 +79,52 @@ jobs:
           --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
           --workspace-name aml-tccc-ms-training-dts-dsml-poc \
           --query version -o tsv)
-        echo "::set-output name=model_name::$MODEL_NAME"
-        echo "::set-output name=model_version::$MODEL_VERSION"
         
+        # Validate model was registered
+        if [ -z "$MODEL_VERSION" ]; then
+          echo "Error: Model registration failed or version not returned"
+          exit 1
+        fi
+        
+        echo "Model registered successfully with version: $MODEL_VERSION"
+        echo "model_name=$MODEL_NAME" >> $GITHUB_OUTPUT
+        echo "model_version=$MODEL_VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Wait for Model Registration
+      run: |
+        echo "Waiting for model registration to complete..."
+        sleep 30  # Wait for 30 seconds
+        
+        # Optional: Poll until model is available
+        MODEL_NAME="${{ steps.register_model.outputs.model_name }}"
+        MODEL_VERSION="${{ steps.register_model.outputs.model_version }}"
+        
+        MAX_ATTEMPTS=10
+        ATTEMPT=1
+        
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+          echo "Checking if model exists (Attempt $ATTEMPT of $MAX_ATTEMPTS)..."
+          
+          MODEL_EXISTS=$(az ml model show --name $MODEL_NAME --version $MODEL_VERSION \
+            --resource-group rg-tccc-ms-training-for-dts-dsml-poc \
+            --workspace-name aml-tccc-ms-training-dts-dsml-poc \
+            --query version -o tsv 2>/dev/null || echo "")
+          
+          if [ ! -z "$MODEL_EXISTS" ]; then
+            echo "Success! Model $MODEL_NAME@$MODEL_VERSION is now available"
+            break
+          fi
+          
+          echo "Model not available yet, waiting..."
+          sleep 15  # Wait 15 seconds between checks
+          ATTEMPT=$((ATTEMPT+1))
+        done
+        
+        if [ $ATTEMPT -gt $MAX_ATTEMPTS ]; then
+          echo "Timed out waiting for model to become available"
+          exit 1
+        fi
+
     - name: Create Online Endpoint
       id: create_endpoint
       run: |
